@@ -31,27 +31,6 @@ public class IBasisJsonUtils {
         }
     }
 
-    public static <T> T convetToTFromMap(Map<String,Object> map, Class<T> clazz) {
-        var str = serializeClass(map);
-        try {
-            return mapper.readValue(str, clazz);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static <T> T deserializeClass(InputStream inputStream , Class<T> clazz){
-        if (inputStream == null)
-            return null;
-        try {
-            return mapper.readValue(inputStream, clazz);
-        } catch (IOException e) {
-            log.error("Error During Deserialization");
-            return null;
-        }
-    }
-
     public static <T> T deserializeClass(String obj , TypeReference<T> typeReference){
         if (obj == null) return null;
         try {
@@ -63,7 +42,6 @@ public class IBasisJsonUtils {
         }
         return null;
     }
-
     public static Map<String,Object> convertReportDtoPojo(Object obj) {
         return mapper.convertValue(obj, new TypeReference<Map<String,Object>>() {});
     }

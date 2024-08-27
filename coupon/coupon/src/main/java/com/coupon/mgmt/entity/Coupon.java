@@ -29,10 +29,19 @@ public class Coupon {
 
     private int repetitionLimit; // For BxGy type
 
+    private int redemptionCount = 0;
+    private double totalRevenueGenerated = 0.0;
 //    public boolean isValid() {
 //        return expirationDate == null || new Date().before(expirationDate);
 //    }
 
+    public void incrementRedemptionCount() {
+        this.redemptionCount++;
+    }
+
+    public void addToRevenue(double revenue) {
+        this.totalRevenueGenerated += revenue;
+    }
 
 
 }

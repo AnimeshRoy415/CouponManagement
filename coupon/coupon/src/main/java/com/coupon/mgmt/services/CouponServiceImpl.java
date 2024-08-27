@@ -157,6 +157,12 @@ public class CouponServiceImpl implements CouponService {
         cart.setTotalDiscount(discount);
         cart.setFinalPrice(cart.getTotalPrice() - discount);
 
+        // Update analytics
+        coupon.incrementRedemptionCount();
+        coupon.addToRevenue(cart.getFinalPrice());
+        couponRepository.save(coupon);
+
+
         // Record coupon usage
         recordCouponUsage(cart, couponId, discount);
 
@@ -315,10 +321,15 @@ public class CouponServiceImpl implements CouponService {
             if (discount > 0) {
                 cart.applyCoupon(coupon, discount);
             }
+            // Update analytics
+            coupon.incrementRedemptionCount();
+            coupon.addToRevenue(cart.getFinalPrice());
 
 //            // Record coupon usage
             recordCouponUsage(cart, coupon.getId(), discount);
         }
+
+        couponRepository.saveAll(couponList);
         return cart;
     }
 
