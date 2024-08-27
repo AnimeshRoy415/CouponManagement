@@ -1,23 +1,32 @@
+Here’s an updated version of the README that includes the new analytics features:
+
+---
+
 # Coupon Management System
 
 ## Overview
 
-The Coupon Management System is a Spring Boot application designed to manage discount coupons for an e-commerce platform. The application allows users to create, update, retrieve, and delete coupons. It also supports the application of coupons to shopping carts, providing discounts based on different criteria such as Buy X Get Y, Cart-wise discounts, and Product-wise discounts.
+The Coupon Management System is a Spring Boot application designed to manage discount coupons for an e-commerce platform. It enables users to create, update, retrieve, and delete coupons, apply them to shopping carts, and find applicable coupons. The application also supports various discount criteria like Buy X Get Y, cart-wise discounts, and product-wise discounts.
 
 ## Features
 
-- **Create Coupons**: Create new discount coupons with specific criteria.
-- **Retrieve Coupons**: Fetch individual coupons or all available coupons, with optional filtering for active/inactive status.
+- **Create Coupons**: Easily create new discount coupons with specific criteria.
+- **Retrieve Coupons**: Fetch individual coupons or all available coupons, with optional filtering by active/inactive status.
 - **Update Coupons**: Update existing coupons with new details.
 - **Delete Coupons**: Remove coupons from the system.
-- **Apply Coupons**: Apply a coupon to a shopping cart to calculate discounts.
+- **Apply Coupons**: Apply one or multiple coupons to a shopping cart and calculate discounts.
 - **Find Applicable Coupons**: Retrieve a list of applicable coupons for a specific cart.
+- **Analytics**: 
+  - **Top Performing Coupons**: Identify the top-performing coupons based on the revenue they generate.
+  - **Least Used Coupons**: Identify the coupons with the least number of redemptions.
+  - **Performance Reports**: Generate detailed reports on coupon performance and usage trends.
+- **Usage History**: Track and retrieve the usage history of coupons.
 
 ## Getting Started
 
 ### Prerequisites
 
-Before running the application, ensure you have the following installed:
+Ensure you have the following installed before running the application:
 
 - **Java 17** or higher
 - **Maven 3.6.3** or higher
@@ -43,19 +52,21 @@ Before running the application, ensure you have the following installed:
 
 ### Configuration
 
-The application uses an in-memory H2 database for simplicity. You can configure a different database in the `application.properties` file.
+The application uses an in-memory H2 database by default. You can configure a different database in the `application.properties` file.
 
 ### Running Tests
 
-To run the unit tests:
+To run unit tests:
 
 ```bash
 mvn test
 ```
 
-### API Endpoints
+## API Endpoints
 
-The application exposes several RESTful endpoints for managing and applying coupons.
+The application exposes several RESTful endpoints for managing, applying, and analyzing coupons.
+
+### Coupon Management
 
 - **Create Coupon**
   - `POST /api/coupons`
@@ -79,15 +90,50 @@ The application exposes several RESTful endpoints for managing and applying coup
 - **Delete Coupon**
   - `DELETE /api/coupons/{id}`
 
-- **Apply Coupon**
-  - `POST /api/coupons/{couponId}/apply`
-  - Request Body: `Cart`
-  - Response: `Cart`
-
 - **Find Applicable Coupons**
-  - `POST /api/coupons/applicable`
+  - `POST /api/coupons/applicable-coupons`
   - Request Body: `Cart`
   - Response: `List<CouponResponseDto>`
+
+- **Apply Multiple Coupons**
+  - `POST /api/coupons/apply-coupons`
+  - Request Body: `ApplyCouponsRequest`
+  - Response: `Cart`
+
+### Coupon Analytics
+
+- **Get Top Performing Coupons**
+  - `GET /api/analytics/top-performing-coupons`
+  - Query Params: `limit` (default is 10)
+  - Response: `List<Coupon>`
+
+- **Get Least Used Coupons**
+  - `GET /api/analytics/least-used-coupons`
+  - Query Params: `limit` (default is 10)
+  - Response: `List<Coupon>`
+
+- **Generate Performance Report**
+  - `POST /api/analytics/generate-performance-report`
+  - Action: Generates a report on coupon performance.
+  
+- **Generate Usage Report**
+  - `POST /api/analytics/generate-usage-report`
+  - Action: Generates a report on coupon usage.
+
+### Coupon Usage History
+
+- **Get All Coupon Usage History**
+  - `GET /api/coupon-usage-history/all`
+  - Response: `List<CouponUsageHistResponseDto>`
+
+- **Get Coupon Usage History by ID**
+  - `GET /api/coupon-usage-history/{id}`
+  - Response: `CouponUsageHistResponseDto`
+
+- **Get Coupon Usage History List by IDs**
+  - `GET /api/coupon-usage-history`
+  - Query Params: `ids`
+  - Response: `List<CouponUsageHistResponseDto>`
 
 ### Example Usage
 
@@ -122,19 +168,22 @@ The application exposes several RESTful endpoints for managing and applying coup
    }
    ```
 
-2. **Applying a Coupon:**
+2. **Applying Multiple Coupons:**
 
    Request:
 
    ```json
    {
-     "items": [
-       {
-         "productId": 101,
-         "quantity": 3,
-         "price": 50.0
-       }
-     ]
+     "couponIds": [1, 2],
+     "cart": {
+       "items": [
+         {
+           "productId": 101,
+           "quantity": 3,
+           "price": 50.0
+         }
+       ]
+     }
    }
    ```
 
@@ -156,17 +205,17 @@ The application exposes several RESTful endpoints for managing and applying coup
    }
    ```
 
-### Exception Handling
+## Exception Handling
 
-The application has custom exceptions for various scenarios:
+The application includes custom exceptions for specific scenarios:
 
 - **CouponNotFound:** Thrown when a requested coupon does not exist.
 - **CouponExpire:** Thrown when a coupon is expired.
 - **ConditionNotMeet:** Thrown when a coupon's conditions are not met during application.
 
-### Database Schema
+## Database Schema
 
-The application uses an H2 in-memory database with the following structure:
+The application uses an H2 in-memory database with the following schema:
 
 - **Coupons Table:**
   - `id`: Long (Primary Key)
@@ -174,20 +223,16 @@ The application uses an H2 in-memory database with the following structure:
   - `details`: JSON (Details about the coupon)
   - `expirationDate`: Long (Timestamp)
   - `repetitionLimit`: Integer
+  - `totalRevenueGenerated`: Double (Total revenue generated by the coupon)
+  - `redemptionCount`: Integer (Number of times the coupon has been redeemed)
 
 - **Cart Table:**
   - `id`: Long (Primary Key)
   - `items`: List<CartItem> (One-to-Many relationship with CartItem)
 
-### Future Enhancements
 
-- **User Authentication**: Implement user authentication and authorization to restrict access to coupon management features.
-- **Integration with Payment Gateway**: Integrate the coupon system with a payment gateway to apply discounts at checkout.
-- **Analytics**: Add features to track coupon usage and generate reports.
+## Contributing
 
-### Contributing
-
-Contributions are welcome! Please fork the repository and create a pull request for any feature additions or bug fixes.
-
+Contributions are welcome! Fork the repository and create a pull request for any feature additions or bug fixes.
 
 ---
