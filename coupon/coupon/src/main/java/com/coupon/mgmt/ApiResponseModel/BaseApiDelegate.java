@@ -7,7 +7,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import javax.servlet.http.HttpServletResponse;
 import java.io.InputStream;
 
-public abstract class BaseApiDelegate {
+public abstract class   BaseApiDelegate {
 
 
     protected <T> ResponseEntity<ApiResponse<T>> formApiResponse(T data) {

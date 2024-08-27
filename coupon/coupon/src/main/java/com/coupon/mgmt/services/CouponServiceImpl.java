@@ -2,42 +2,50 @@ package com.coupon.mgmt.services;
 
 import com.coupon.mgmt.dtos.CouponDto;
 import com.coupon.mgmt.dtos.CouponResponseDto;
-import com.coupon.mgmt.entity.Cart;
-import com.coupon.mgmt.entity.CartItem;
-import com.coupon.mgmt.entity.Coupon;
-import com.coupon.mgmt.entity.ProductQuantity;
+import com.coupon.mgmt.entity.*;
 import com.coupon.mgmt.exception.ConditionNotMeet;
 import com.coupon.mgmt.exception.CouponExpire;
 import com.coupon.mgmt.exception.CouponNotFound;
 import com.coupon.mgmt.repository.CouponRepository;
+import com.coupon.mgmt.repository.CouponUsageHistoryRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class CouponServiceImpl implements CouponService {
 
 
     @Autowired
     private CouponRepository couponRepository;
 
+    @Autowired
+    private CouponUsageHistoryRepository couponUsageHistoryRepository;
+
 
     @Override
     public Coupon createCoupon(CouponDto couponDto) {
 
-        Coupon coupon= CouponDto.toEntity(couponDto);
+        Coupon coupon = CouponDto.toEntity(couponDto);
         return couponRepository.save(coupon);
     }
 
     @Override
     public Coupon getCouponById(Long id) {
 
-        Optional<Coupon> optionalCoupon= couponRepository.findById(id);
-        if (Objects.isNull(optionalCoupon)){
+        Optional<Coupon> optionalCoupon = couponRepository.findById(id);
+        if (Objects.isNull(optionalCoupon)) {
             throw new CouponNotFound("Coupon not found");
         }
         return optionalCoupon.get();
@@ -49,8 +57,7 @@ public class CouponServiceImpl implements CouponService {
             return couponRepository.findAll();
         } else if (isActive) {
             return couponRepository.findAllActiveCoupon(System.currentTimeMillis());
-        }
-        else {
+        } else {
             return couponRepository.findAllDeActiveCoupon(System.currentTimeMillis());
         }
     }
@@ -80,7 +87,7 @@ public class CouponServiceImpl implements CouponService {
 
         for (Coupon coupon : allCoupons) {
 
-            CouponResponseDto couponResponseDto= new CouponResponseDto();
+            CouponResponseDto couponResponseDto = new CouponResponseDto();
 
             double discount = 0;
 
@@ -104,16 +111,16 @@ public class CouponServiceImpl implements CouponService {
                 case PRODUCT_WISE:
                     discount = calculateProductWiseDiscount(coupon, cart);
                     couponResponseDto.setId(coupon.getId());
-                    if (discount > 0){
-                    couponResponseDto.setDiscount(discount);
+                    if (discount > 0) {
+                        couponResponseDto.setDiscount(discount);
                     }
 
                     couponResponseDto.setType(coupon.getType());
                     break;
             }
 
-             // Assume Coupon has a field `discountAmount` to store the calculated discount
-            if(Objects.nonNull(couponResponseDto.getDiscount()) && couponResponseDto.getDiscount()>0)
+            // Assume Coupon has a field `discountAmount` to store the calculated discount
+            if (Objects.nonNull(couponResponseDto.getDiscount()) && couponResponseDto.getDiscount() > 0)
                 applicableCoupons.add(couponResponseDto);
 
         }
@@ -123,15 +130,14 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     public Cart applyCoupon(Long couponId, Cart cart) {
-
-        Optional<Coupon> optCoupon= couponRepository.findById(couponId);
-        if (optCoupon.isEmpty()){
+        Optional<Coupon> optCoupon = couponRepository.findById(couponId);
+        if (optCoupon.isEmpty()) {
             throw new CouponNotFound("Coupon not found!!!");
         }
-        Coupon coupon= optCoupon.get();
+        Coupon coupon = optCoupon.get();
 
-        if (coupon.getExpirationDate()<System.currentTimeMillis()){
-            throw new CouponExpire("Coupon Expire!!!");
+        if (coupon.getExpirationDate() < System.currentTimeMillis()) {
+            throw new CouponExpire("Coupon Expired!!!");
         }
 
         double discount = 0;
@@ -139,23 +145,28 @@ public class CouponServiceImpl implements CouponService {
         switch (coupon.getType()) {
             case BX_GY:
                 discount = calculateBxGyDiscount(coupon, cart);
-
                 break;
             case CART_WISE:
                 discount = calculateCartWiseDiscount(coupon, cart);
-
                 break;
             case PRODUCT_WISE:
                 discount = calculateProductWiseDiscount(coupon, cart);
                 break;
         }
 
+        cart.setTotalDiscount(discount);
+        cart.setFinalPrice(cart.getTotalPrice() - discount);
+
+        // Record coupon usage
+        recordCouponUsage(cart, couponId, discount);
+
         return cart;
     }
 
+
     private double calculateBxGyDiscount(Coupon coupon, Cart cart) {
 
-        if (coupon.getExpirationDate()<System.currentTimeMillis()){
+        if (coupon.getExpirationDate() < System.currentTimeMillis()) {
             throw new CouponExpire("Coupon Expire!!!");
         }
         double totalDiscount = 0;
@@ -168,7 +179,7 @@ public class CouponServiceImpl implements CouponService {
         // Calculate the maximum number of times the coupon can be applied based on buy products
         for (ProductQuantity buyProduct : buyProducts) {
             CartItem cartItem = cart.getItems().stream()
-                    .filter(item ->item.getProductId().equals(buyProduct.getProductId()))
+                    .filter(item -> item.getProductId().equals(buyProduct.getProductId()))
                     .findFirst()
                     .orElse(null);
 
@@ -176,13 +187,9 @@ public class CouponServiceImpl implements CouponService {
                 int timesApplicable = cartItem.getQuantity() / buyProduct.getQuantity();
                 totalApplicableRepetitions = Math.min(totalApplicableRepetitions, timesApplicable);
             }
-//            else {
-//                // If any required buy product is missing, coupon cannot be applied
-//                return 0;
-//            }
+
         }
 
-        // Apply repetition limit
         totalApplicableRepetitions = Math.min(totalApplicableRepetitions, repetitionLimit);
 
         // Calculate discount for each get product
@@ -190,7 +197,7 @@ public class CouponServiceImpl implements CouponService {
             int finalTotalApplicableRepetitions = totalApplicableRepetitions;
             CartItem freeItem = cart.getItems().stream()
                     .filter(item -> {
-                        if (item.getProductId().equals(getProduct.getProductId())){
+                        if (item.getProductId().equals(getProduct.getProductId())) {
                             item.setTotalDiscount(finalTotalApplicableRepetitions * getProduct.getQuantity() * item.getPrice());
                         }
 
@@ -201,8 +208,7 @@ public class CouponServiceImpl implements CouponService {
 
             if (freeItem != null) {
                 totalDiscount += totalApplicableRepetitions * getProduct.getQuantity() * freeItem.getPrice().doubleValue();
-            }
-            else {
+            } else {
 
             }
 
@@ -214,14 +220,14 @@ public class CouponServiceImpl implements CouponService {
 
         cart.setTotalPrice(totalCartPrice);
         cart.setTotalDiscount(totalDiscount);
-        cart.setFinalPrice(totalCartPrice- totalDiscount);
+        cart.setFinalPrice(totalCartPrice - totalDiscount);
         return totalDiscount;
     }
 
 
     private double calculateCartWiseDiscount(Coupon coupon, Cart cart) {
 
-        if (coupon.getExpirationDate()<System.currentTimeMillis()){
+        if (coupon.getExpirationDate() < System.currentTimeMillis()) {
             throw new CouponExpire("Coupon Expire!!!");
         }
         double totalPrice = 0;
@@ -229,7 +235,7 @@ public class CouponServiceImpl implements CouponService {
 
             totalPrice += item.getQuantity() * item.getPrice();
         }
-        if (totalPrice < coupon.getDetails().getThreshold()){
+        if (totalPrice < coupon.getDetails().getThreshold()) {
             throw new ConditionNotMeet("Condition not meet!!!");
         }
 
@@ -241,10 +247,10 @@ public class CouponServiceImpl implements CouponService {
             }
         }
         if (totalPrice >= coupon.getDetails().getThreshold()) {
-            double totalDiscount= totalPrice * (coupon.getDetails().getDiscountPercentage() / 100);
+            double totalDiscount = totalPrice * (coupon.getDetails().getDiscountPercentage() / 100);
             cart.setTotalPrice(totalPrice);
             cart.setTotalDiscount(totalDiscount);
-            cart.setFinalPrice(totalPrice-totalDiscount);
+            cart.setFinalPrice(totalPrice - totalDiscount);
             return totalDiscount;
         }
         return 0;
@@ -253,7 +259,7 @@ public class CouponServiceImpl implements CouponService {
     private double calculateProductWiseDiscount(Coupon coupon, Cart cart) {
         double discount = 0;
 
-        if (coupon.getExpirationDate()<System.currentTimeMillis()){
+        if (coupon.getExpirationDate() < System.currentTimeMillis()) {
             throw new CouponExpire("Coupon Expire!!!");
         }
 
@@ -263,8 +269,8 @@ public class CouponServiceImpl implements CouponService {
                 item.setTotalDiscount(discount);
             }
         }
-        if (discount<= 0){
-            throw  new ConditionNotMeet("Condition not meet");
+        if (discount <= 0) {
+            throw new ConditionNotMeet("Condition not meet");
         }
 
         double totalCartPrice = cart.getItems().stream()
@@ -272,7 +278,72 @@ public class CouponServiceImpl implements CouponService {
                 .sum();
         cart.setTotalPrice(totalCartPrice);
         cart.setTotalDiscount(discount);
-        cart.setFinalPrice(totalCartPrice-discount);
+        cart.setFinalPrice(totalCartPrice - discount);
         return discount;
     }
+
+    @Override
+    public Cart applyMultipleCoupons(List<Long> couponIds, Cart cart) {
+
+        List<Coupon> couponList = couponRepository.findAllById(couponIds);
+        for (Coupon coupon : couponList) {
+
+//            Optional<Coupon> optCoupon = couponRepository.findById(couponId);
+//            if (optCoupon.isEmpty()) {
+//                throw new CouponNotFound("Coupon not found!!!");
+//            }
+//            Coupon coupon = optCoupon.get();
+
+            if (coupon.getExpirationDate() < System.currentTimeMillis()) {
+                throw new CouponExpire("Coupon Expire!!!");
+            }
+
+            double discount = 0;
+
+            switch (coupon.getType()) {
+                case BX_GY:
+                    discount = calculateBxGyDiscount(coupon, cart);
+                    break;
+                case CART_WISE:
+                    discount = calculateCartWiseDiscount(coupon, cart);
+                    break;
+                case PRODUCT_WISE:
+                    discount = calculateProductWiseDiscount(coupon, cart);
+                    break;
+            }
+
+            if (discount > 0) {
+                cart.applyCoupon(coupon, discount);
+            }
+
+//            // Record coupon usage
+            recordCouponUsage(cart, coupon.getId(), discount);
+        }
+        return cart;
+    }
+
+    @Override
+    public void recordCouponUsage(Cart cart, Long couponId, Double discountApplied) {
+        Coupon coupon = getCouponById(couponId);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String cartJson;
+        try {
+            cartJson = objectMapper.writeValueAsString(cart); // Serialize Cart object to JSON string
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing cart to JSON", e);
+        }
+            CouponUsageHistory usageHistory = new CouponUsageHistory();
+            usageHistory.setCoupon(coupon);
+            usageHistory.setCart(cartJson);
+            usageHistory.setUsedAt(LocalDateTime.now(ZoneOffset.UTC));
+            usageHistory.setDiscountApplied(discountApplied);
+        System.out.println("usageHistory   :::   "+ usageHistory);
+            CouponUsageHistory couponUsageHistory= couponUsageHistoryRepository.save(usageHistory);
+            log.info("CouponUsageHistory is saved : {}", couponUsageHistory);
+    }
+
 }
+
+

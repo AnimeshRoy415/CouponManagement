@@ -16,4 +16,7 @@ public interface CouponService {
     void deleteCoupon(Long id);
     List<CouponResponseDto> findApplicableCoupons(Cart cart);
     Cart applyCoupon(Long couponId, Cart cart);
+    Cart applyMultipleCoupons(List<Long> couponIds, Cart cart); // New method to apply multiple coupons
+    void recordCouponUsage(Cart cart, Long couponId, Double discountApplied);
+
 }

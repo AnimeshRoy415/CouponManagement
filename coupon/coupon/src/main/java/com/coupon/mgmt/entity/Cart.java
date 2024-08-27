@@ -13,6 +13,7 @@ public class Cart {
     private Double totalPrice;
     private Double totalDiscount;
     private Double finalPrice;
+    private List<Coupon> appliedCoupons; // New field to store applied coupons
 
     public void calculateTotals() {
         totalPrice = items.stream()
@@ -20,4 +21,11 @@ public class Cart {
                 .sum();
         finalPrice = totalPrice - totalDiscount;
     }
+
+    public void applyCoupon(Coupon coupon, double discount) {
+        appliedCoupons.add(coupon);
+        totalDiscount += discount;
+        finalPrice = totalPrice - totalDiscount;
+    }
+
 }

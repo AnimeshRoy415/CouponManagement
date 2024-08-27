@@ -1,6 +1,7 @@
 package com.coupon.mgmt.controller;
 
 import com.coupon.mgmt.ApiResponseModel.BaseApiDelegate;
+import com.coupon.mgmt.CouponRequestModule.ApplyCouponsRequest;
 import com.coupon.mgmt.dtos.CouponDto;
 import com.coupon.mgmt.dtos.CouponResponseDto;
 import com.coupon.mgmt.entity.Cart;
@@ -50,8 +51,9 @@ public class CouponController extends BaseApiDelegate{
         return formApiResponse(couponService.findApplicableCoupons(cart));
     }
 
-    @PostMapping("/apply-coupon/{id}")
-    public ResponseEntity applyCoupon(@PathVariable Long id,@RequestBody Cart cart) {
-        return formApiResponse(couponService.applyCoupon(id, cart));
+    @PostMapping("/apply-coupons")
+    public ResponseEntity<Cart> applyMultipleCoupons(@RequestBody ApplyCouponsRequest request) {
+        Cart updatedCart = couponService.applyMultipleCoupons(request.getCouponIds(), request.getCart());
+        return ResponseEntity.ok(updatedCart);
     }
 }
