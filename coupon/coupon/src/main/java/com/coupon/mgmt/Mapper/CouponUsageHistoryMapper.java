@@ -1,6 +1,6 @@
 package com.coupon.mgmt.mapper;
 
-import com.coupon.mgmt.Utils.IBasisJsonUtils;
+import com.coupon.mgmt.Utils.JsonUtils;
 import com.coupon.mgmt.dtos.CouponUsageHistResponseDto;
 import com.coupon.mgmt.entity.Cart;
 import com.coupon.mgmt.entity.CouponUsageHistory;
@@ -13,7 +13,7 @@ public class CouponUsageHistoryMapper {
 
         dto.setId(usageHistory.getId());
         dto.setCoupon(usageHistory.getCoupon());
-        dto.setCart(IBasisJsonUtils.deserializeClass(usageHistory.getCart(), new TypeReference<Cart>() {
+        dto.setCart(JsonUtils.deserializeClass(usageHistory.getCart(), new TypeReference<Cart>() {
         })); // Assuming cart is stored as JSON string
         dto.setUsedAt(usageHistory.getUsedAt());
         dto.setDiscountApplied(usageHistory.getDiscountApplied());
