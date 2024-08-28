@@ -28,4 +28,9 @@ public class CouponAnalyticsController extends BaseApiDelegate {
     public ResponseEntity getLeastUsedCoupons(@RequestParam(defaultValue = "10") int limit) {
         return formApiResponse(couponAnalyticsService.getLeastUsedCoupons(limit));
     }
+
+    @GetMapping("/coupons-expiring-soon")
+    public ResponseEntity getCouponsExpiringSoon(@RequestParam(defaultValue = "7") int days) {
+        return formApiResponse(couponAnalyticsService.getCouponsExpiringSoon(days));
+    }
 }
